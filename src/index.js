@@ -32,11 +32,28 @@ io.on("connection", (socket) => {
 
   // server (emit) -> client (receive) - message
   socket.emit("message", "Welcome!");
+  //server(emit) -> all clients except this socket connection (receive) - message
+  socket.broadcast.emit("message", "A new user has joined!");
 
   // client (emit) -> sever (receive) - message submitted
   socket.on("submit", (message) => {
     // server (emit) -> all clients (receive) - message
     io.emit("message", message);
+  });
+
+  
+  // client emit -> server(receive) - location
+  socket.on("sendLocation", (coords) => {
+    //server(emit) -> all clients(receive) - location
+    io.emit(
+      "message",
+      `https://google.com/maps?q=${coords.latitude},${coords.longitude}`
+    );
+  });
+
+  //server (emit) -> all connected clients(receive) - message
+  socket.on("disconnect", () => {
+    io.emit("message", "A user has left the chat!");
   });
 });
 
