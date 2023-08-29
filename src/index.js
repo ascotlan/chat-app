@@ -56,6 +56,7 @@ io.on("connection", (socket) => {
       "message",
       `https://google.com/maps?q=${coords.latitude},${coords.longitude}`
     );
+    // send acknowledgment
     callback();
   });
 
