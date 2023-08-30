@@ -1,9 +1,12 @@
 const express = require("express");
 const path = require("path");
-const morgan = require("morgan");
 const http = require("http");
 const socketio = require("socket.io");
 const Filter = require("bad-words");
+const {
+  generateMessage,
+  generateLocationMessage,
+} = require("./utils/messages");
 
 const app = express();
 
@@ -19,7 +22,6 @@ const port = process.env.PORT || 3000;
 // Load the logger first so all (static) HTTP requests are logged to STDOUT
 // 'dev' = Concise output colored by response status for development use.
 //         The :status token will be colored red for server error codes, yellow for client error codes, cyan for redirection codes, and uncolored for all other codes.
-app.use(morgan("dev"));
 
 // Define static directory files path for Express config
 const publicDirectoryPath = path.join(__dirname, "../public");
@@ -32,9 +34,9 @@ io.on("connection", (socket) => {
   console.log("New web socket connection");
 
   // server (emit) -> client (receive) - message
-  socket.emit("message", "Welcome!");
+  socket.emit("message", generateMessage("Welcome!"));
   //server(emit) -> all clients except this socket connection (receive) - message
-  socket.broadcast.emit("message", "A new user has joined!");
+  socket.broadcast.emit("message", generateMessage("A new user has joined!"));
 
   // client (emit) -> sever (receive) - message submitted
   socket.on("submit", (message, callback) => {
@@ -44,7 +46,7 @@ io.on("connection", (socket) => {
       return callback("Profanity is not allowed");
     }
     // server (emit) -> all clients (receive) - message
-    io.emit("message", message);
+    io.emit("message", generateMessage(message));
     // send acknowledgment
     callback();
   });
@@ -52,17 +54,14 @@ io.on("connection", (socket) => {
   // client emit -> server(receive) - location
   socket.on("sendLocation", (coords, callback) => {
     //server(emit) -> all clients(receive) - location
-    io.emit(
-      "locationMessage",
-      `https://google.com/maps?q=${coords.latitude},${coords.longitude}`
-    );
+    io.emit("locationMessage", generateLocationMessage(coords));
     // send acknowledgment
     callback();
   });
 
   //server (emit) -> all connected clients(receive) - message
   socket.on("disconnect", () => {
-    io.emit("message", "A user has left the chat!");
+    io.emit("message", generateMessage("A user has left the chat!"));
   });
 });
 

@@ -15,17 +15,19 @@ const locationTemplate = document.querySelector("#location-template").innerHTML;
 socket.on("message", (message) => {
   // render dynamic content in the mustache bars in the innerHtml hidden in the script tags
   const html = Mustache.render(messageTemplate, {
-    message,
+    message: message.text,
+    createdAt: moment(message.createdAt).format("h:mm a"),
   });
   // insert html dynamically before the end of the closing tag
   $messages.insertAdjacentHTML("beforeend", html);
 });
 
 // listen for emitted locationMessage on connection
-socket.on("locationMessage", (url) => {
+socket.on("locationMessage", (message) => {
   // render dynamic content in the mustache bars in the innerHtml hidden in the script tags
   const html = Mustache.render(locationTemplate, {
-    url,
+    url: message.url,
+    createdAt: moment(message.createdAt).format("h:mm a") 
   });
 
   // insert html dynamically before the end of the closing tag
