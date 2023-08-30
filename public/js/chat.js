@@ -5,10 +5,31 @@ const $messageForm = document.querySelector("#message-form");
 const $messageFormInput = $messageForm.querySelector("input");
 const $messageFormButton = $messageForm.querySelector("button");
 const $sendLocationButton = document.querySelector("#send-location");
+const $messages = document.querySelector("#messages");
+
+// Get the Templates
+const messageTemplate = document.querySelector("#message-template").innerHTML;
+const locationTemplate = document.querySelector("#location-template").innerHTML;
 
 // listen for emitted message on connection
 socket.on("message", (message) => {
-  console.log(message);
+  // render dynamic content in the mustache bars in the innerHtml hidden in the script tags
+  const html = Mustache.render(messageTemplate, {
+    message,
+  });
+  // insert html dynamically before the end of the closing tag
+  $messages.insertAdjacentHTML("beforeend", html);
+});
+
+// listen for emitted locationMessage on connection
+socket.on("locationMessage", (url) => {
+  // render dynamic content in the mustache bars in the innerHtml hidden in the script tags
+  const html = Mustache.render(locationTemplate, {
+    url,
+  });
+
+  // insert html dynamically before the end of the closing tag
+  $messages.insertAdjacentHTML("beforeend", html);
 });
 
 // listen for form submit
