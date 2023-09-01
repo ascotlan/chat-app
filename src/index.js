@@ -7,6 +7,12 @@ const {
   generateMessage,
   generateLocationMessage,
 } = require("./utils/messages");
+const {
+  addUser,
+  removeUser,
+  getUser,
+  getUsersInRoom,
+} = require("./utils/users");
 
 const app = express();
 
@@ -19,10 +25,6 @@ const io = socketio(server);
 // set port number as host port#
 const port = process.env.PORT || 3000;
 
-// Load the logger first so all (static) HTTP requests are logged to STDOUT
-// 'dev' = Concise output colored by response status for development use.
-//         The :status token will be colored red for server error codes, yellow for client error codes, cyan for redirection codes, and uncolored for all other codes.
-
 // Define static directory files path for Express config
 const publicDirectoryPath = path.join(__dirname, "../public");
 
@@ -33,35 +35,79 @@ app.use(express.static(publicDirectoryPath));
 io.on("connection", (socket) => {
   console.log("New web socket connection");
 
-  // server (emit) -> client (receive) - message
-  socket.emit("message", generateMessage("Welcome!"));
-  //server(emit) -> all clients except this socket connection (receive) - message
-  socket.broadcast.emit("message", generateMessage("A new user has joined!"));
+  // client (emit) -> sever (receive) - username and room (join)
+  socket.on("join", ({ username, room }, callback) => {
+    const { error, user } = addUser({
+      id: socket.id,
+      username,
+      room,
+    });
+
+    if (error) {
+      return callback(error);
+    }
+
+    socket.join(user.room);
+
+    // server (emit) -> client(receive) - message
+    socket.emit("message", generateMessage("Admin", `Welcome!`));
+    //server(emit) -> all clients in a room except this socket connection (receive) - message
+    socket.broadcast
+      .to(user.room)
+      .emit(
+        "message",
+        generateMessage("Admin", `${user.username} has joined!`)
+      );
+    io.to(user.room).emit("roomData", {
+      room: user.room,
+      users: getUsersInRoom(user.room),
+    });
+
+    callback();
+  });
 
   // client (emit) -> sever (receive) - message submitted
-  socket.on("submit", (message, callback) => {
+  socket.on("submitMessage", (message, callback) => {
+    const user = getUser(socket.id);
+
     const filter = new Filter();
     //filter message for profanity and send error msg
     if (filter.isProfane(message)) {
       return callback("Profanity is not allowed");
     }
     // server (emit) -> all clients (receive) - message
-    io.emit("message", generateMessage(message));
+    io.to(user.room).emit("message", generateMessage(user.username, message));
     // send acknowledgment
     callback();
   });
 
   // client emit -> server(receive) - location
   socket.on("sendLocation", (coords, callback) => {
+    const user = getUser(socket.id);
+
     //server(emit) -> all clients(receive) - location
-    io.emit("locationMessage", generateLocationMessage(coords));
+    io.to(user.room).emit(
+      "locationMessage",
+      generateLocationMessage(user.username, coords)
+    );
     // send acknowledgment
     callback();
   });
 
   //server (emit) -> all connected clients(receive) - message
   socket.on("disconnect", () => {
-    io.emit("message", generateMessage("A user has left the chat!"));
+    const user = removeUser(socket.id);
+
+    if (user) {
+      io.to(user.room).emit(
+        "message",
+        generateMessage("Admin", `${user.username} has left the chat!`)
+      );
+      io.to(user.room).emit("roomData", {
+        room: user.room,
+        users: getUsersInRoom(user.room),
+      });
+    }
   });
 });
 

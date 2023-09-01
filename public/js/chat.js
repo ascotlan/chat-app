@@ -10,11 +10,18 @@ const $messages = document.querySelector("#messages");
 // Get the Templates
 const messageTemplate = document.querySelector("#message-template").innerHTML;
 const locationTemplate = document.querySelector("#location-template").innerHTML;
+const sidebarTemplate = document.querySelector("#sidebar-template").innerHTML;
+
+// Options
+const { username, room } = Qs.parse(location.search, {
+  ignoreQueryPrefix: true,
+});
 
 // listen for emitted message on connection
 socket.on("message", (message) => {
   // render dynamic content in the mustache bars in the innerHtml hidden in the script tags
   const html = Mustache.render(messageTemplate, {
+    username: message.username,
     message: message.text,
     createdAt: moment(message.createdAt).format("h:mm a"),
   });
@@ -26,12 +33,23 @@ socket.on("message", (message) => {
 socket.on("locationMessage", (message) => {
   // render dynamic content in the mustache bars in the innerHtml hidden in the script tags
   const html = Mustache.render(locationTemplate, {
+    username: message.username,
     url: message.url,
-    createdAt: moment(message.createdAt).format("h:mm a") 
+    createdAt: moment(message.createdAt).format("h:mm a"),
   });
 
   // insert html dynamically before the end of the closing tag
   $messages.insertAdjacentHTML("beforeend", html);
+});
+
+socket.on("roomData", ({ room, users }) => {
+  const html = Mustache.render(sidebarTemplate, {
+    room,
+    users,
+  });
+
+  // insert html dynamically
+  document.querySelector("#sidebar").innerHTML = html;
 });
 
 // listen for form submit
@@ -44,7 +62,7 @@ $messageForm.addEventListener("submit", (e) => {
   //get input text from form
   const message = e.target.elements.message.value;
   //emit message from client to server
-  socket.emit("submit", message, (error) => {
+  socket.emit("submitMessage", message, (error) => {
     //enable form btn, clear, and focus on input element
     $messageFormButton.removeAttribute("disabled");
     $messageFormInput.value = "";
@@ -81,4 +99,11 @@ document.querySelector("#send-location").addEventListener("click", (e) => {
       }
     );
   });
+});
+
+socket.emit("join", { username, room }, (error) => {
+  if (error) {
+    alert(error);
+    location.href = "/";
+  }
 });
