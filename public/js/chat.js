@@ -17,6 +17,29 @@ const { username, room } = Qs.parse(location.search, {
   ignoreQueryPrefix: true,
 });
 
+const autoscroll = () => {
+  // New message element
+  const $newMessage = $messages.lastElementChild;
+
+  //Height of the new message
+  const newMessageStyles = getComputedStyle($newMessage);
+  const newMessageMargin = parseInt(newMessageStyles.marginBottom);
+  const newMessageHeight = $newMessage.offsetHeight + newMessageMargin;
+
+  // Visible height
+  const visibleHeight = $messages.offsetHeight;
+
+  // Height of messages container
+  const containerHeight = $messages.scrollHeight;
+
+  // How far have I scrolled
+  const scrollOffset = $messages.scrollTop + visibleHeight;
+
+  if(containerHeight - newMessageHeight <= scrollOffset){
+    $messages.scrollTop = $messages.scrollHeight;
+  }
+};
+
 // listen for emitted message on connection
 socket.on("message", (message) => {
   // render dynamic content in the mustache bars in the innerHtml hidden in the script tags
@@ -27,6 +50,7 @@ socket.on("message", (message) => {
   });
   // insert html dynamically before the end of the closing tag
   $messages.insertAdjacentHTML("beforeend", html);
+  autoscroll();
 });
 
 // listen for emitted locationMessage on connection
@@ -40,6 +64,7 @@ socket.on("locationMessage", (message) => {
 
   // insert html dynamically before the end of the closing tag
   $messages.insertAdjacentHTML("beforeend", html);
+  autoscroll();
 });
 
 socket.on("roomData", ({ room, users }) => {
